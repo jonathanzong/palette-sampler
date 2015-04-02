@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <script type="text/javascript" src="quantize.js"></script>
+</head>
+<body>
+
+  <img id="img-in" src="https://cloud.githubusercontent.com/assets/4650077/6957423/a15534ca-d8c8-11e4-82f2-1346f07f3b8a.jpg" style="width:47%;" />
+
+  <canvas id="myCanvas">
+    Your browser does not support the HTML5 canvas tag.
+  </canvas>
+
+  <form style="width:47%; display: inline-block;">
+    <input id="file" type="file" name="files[]" onchange="readUpload(this);">
+  </form>
+
+  <button id="quantize" onclick="quantizeToggle()">Quantized Sample</button>
+
+  <script>
+
+  // loads image upload into the #img-in tag
+  function readUpload(input) {
+    if (input.files && input.files[0]) {
+      var reader = new FileReader();
+
+      reader.onload = function(e) {
+          document.getElementById("img-in").src = e.target.result;
+      };
+
+      reader.readAsDataURL(input.files[0]);
+    }
+  }
+
+  // global (i know, sorry) flag for quantize on/off state
+  var quantize = false;
+
+  // click handler for quantize toggle button
+  function quantizeToggle() {
+    quantize = !quantize;
+    var button = document.getElementById("quantize");
+    if (button.innerHTML == "Quantized Sample") {
+      button.innerHTML = "Frequency Sample";
+      qSample = quantizeSample();
+      drawSample(document.getElementById("myCanvas"), qSample);
+    }
+    else {
+      button.innerHTML = "Quantized Sample";
+      drawSample(document.getElementById("myCanvas"), sample);
+    }
+  }
+
+  // cache sample and quantized sample for image
+  var sample;
+  var qSample;
+
+  // width and height of a displayed pixel
+  var pixelWidth = 3;
+
+  // draws "arr" array (either sample or qSample) to the "c" canvas
+  function drawSample(c, arr) {
+    // draw sample array to canvas
+    var ctx = c.getContext("2d");
+    var n = 0;
+    outer:
+    for (var i = 0; i < c.height / pixelWidth; i++) {
+      for (var j = 0; j < c.width / pixelWidth; j++) {
+        if (n >= arr.length) {
+          break outer;
+        }
+        ctx.fillStyle = objToRGBString(arr[n++]);
+        ctx.fillRect(pixelWidth * j, pixelWidth * i, pixelWidth, pixelWidth);
+      }
+    }
+  }
+
+  // returns generated quantized sample array 
+  function quantizeSample() {
+    // https://gist.github.com/nrabinowitz/1104622
+    // quantize.js
+    var maxColors = 20;
+
+    var cmap = MMCQ.quantize(sample, maxColors);
+    var newPalette = cmap.palette();
+    var qSample = sample.map(function(p) {
+      return cmap.map(p); 
+    });
+    return qSample.sort(lightnessComparator);
+  }
+
+  // defines sort order based on lightness dimension of HSL
+  var lightnessComparator = function(a, b) {
+    return rgbToLightness(a) - rgbToLightness(b);
+  };
+
+  // returns L of HSL for an array [r, g, b]
+  function rgbToLightness(i) {
+    var r = i[0], g = i[1], b = i[2];
+    var cMax = Math.max(Math.max(r, g), b);
+    var cMin = Math.min(Math.min(r, g), b);
+    return (cMin + cMax) / 2;
+  }
+
+  // returns css string for array [r, g, b]
+  function objToRGBString(i) {
+    return "rgb(" + i[0] + ", " + 
+           i[1] + ", " +
+           i[2] + ")";
+  }
+
+  document.getElementById("img-in").onload = function () {
+    var c = document.getElementById("myCanvas");
+    c.height = this.height;
+    c.width = this.width;
+    var ctx = c.getContext("2d");
+    var img = document.getElementById("img-in");
+    ctx.drawImage(img, 0, 0);
+    var imgData = ctx.getImageData(0, 0, c.width, c.height);
+    ctx.fillStyle="#ffffff"
+    ctx.fillRect(0, 0, c.width, c.height);
+
+    // reservoir sampling
+    var sample_count = Math.min(imgData.data.length / 4,
+      c.width * c.height / pixelWidth / pixelWidth);
+    sample = [];
+
+    for (var n = 0; n < imgData.data.length; n += 4) {
+        var red = imgData.data[n];
+        var green = imgData.data[n + 1];
+        var blue = imgData.data[n + 2];
+
+        var i = n / 4;
+
+        if (i < sample_count) {
+          sample.push([red, green, blue]);
+        }
+        else {
+          var rand = Math.floor(Math.random() * i);
+          if (rand < sample_count) {
+            sample[rand] = [red, green, blue];
+          }
+        }
+    }
+
+    sample.sort(lightnessComparator);
+    if (quantize) {     
+      qSample = quantizeSample();
+      drawSample(c, qSample);
+    }
+    else {  
+      drawSample(c, sample);
+    }
+    
+  };
+  </script>
+
+</body>
+</html>
