@@ -61,14 +61,15 @@
   function drawSample(c, arr) {
     // draw sample array to canvas
     var ctx = c.getContext("2d");
+    var pxH = c.height / pixelWidth;
+    var pxW = c.width / pixelWidth;
     var n = 0;
+    var inc = 0 | Math.ceil(arr.length / (pxW * pxH));
     outer:
-    for (var i = 0; i < c.height / pixelWidth; i++) {
-      for (var j = 0; j < c.width / pixelWidth; j++) {
-        if (n >= arr.length) {
-          break outer;
-        }
-        ctx.fillStyle = objToRGBString(arr[n++]);
+    for (var i = 0; i < pxH; i++) {
+      for (var j = 0; j < pxW; j++) {
+        ctx.fillStyle = objToRGBString(arr[n]);
+        n += inc;
         ctx.fillRect(pixelWidth * j, pixelWidth * i, pixelWidth, pixelWidth);
       }
     }
@@ -114,14 +115,12 @@
     c.width = this.width;
     var ctx = c.getContext("2d");
     var img = document.getElementById("img-in");
-    ctx.drawImage(img, 0, 0);
+    ctx.drawImage(img, 0, 0, c.width, c.height);
     var imgData = ctx.getImageData(0, 0, c.width, c.height);
-    ctx.fillStyle="#ffffff"
+    ctx.fillStyle="#ffffff";
     ctx.fillRect(0, 0, c.width, c.height);
 
-    // reservoir sampling
-    var sample_count = Math.min(imgData.data.length / 4,
-      c.width * c.height / pixelWidth / pixelWidth);
+    // sample (currently reads every pixel)
     sample = [];
 
     for (var n = 0; n < imgData.data.length; n += 4) {
@@ -130,16 +129,7 @@
         var blue = imgData.data[n + 2];
 
         var i = n / 4;
-
-        if (i < sample_count) {
-          sample.push([red, green, blue]);
-        }
-        else {
-          var rand = Math.floor(Math.random() * i);
-          if (rand < sample_count) {
-            sample[rand] = [red, green, blue];
-          }
-        }
+        sample.push([red, green, blue]);
     }
 
     sample.sort(lightnessComparator);
