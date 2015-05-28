@@ -115,7 +115,7 @@
     c.width = this.width;
     var ctx = c.getContext("2d");
     var img = document.getElementById("img-in");
-    ctx.drawImage(img, 0, 0);
+    ctx.drawImage(img, 0, 0, c.width, c.height);
     var imgData = ctx.getImageData(0, 0, c.width, c.height);
     ctx.fillStyle="#ffffff";
     ctx.fillRect(0, 0, c.width, c.height);
